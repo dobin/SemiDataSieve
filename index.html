@@ -110,9 +110,11 @@
 }
     </style>
 </head>
+
 <body>
     <div class="log-container" id="log-container"></div>
     <div class="menu">
+        <!-- Menu: Head -->
         <div class="menu-head">
             <h2>SemiDataSieve</h2>
             <br>
@@ -122,36 +124,40 @@
             <button class="nicebutton" onclick="uploadFile()">Private Upload</button>
         </div>
         
+        <!-- Menu: Quick -->
         <div class="menu-quick">
             <h2>Quick Filter</h2> <br>
+
             <label class="lbl_width">Include Key</label>
             <div class="input-container">
-                <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilter()">
-                <button class="clear-btn" onclick="clearInput('quick-filter-include-key')">X</button>
+                <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-key')">X</button>
             </div>
             <br>
             <label class="lbl_width">Include Value</label>
             <div class="input-container">
-                <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilter()">
-                <button class="clear-btn" onclick="clearInput('quick-filter-include-value')">X</button>
+                <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-value')">X</button>
             </div>
             <br><br>
+            
             <label class="lbl_width">Exclude Key</label>
             <div class="input-container">
-                <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilter()">
-                <button class="clear-btn" onclick="clearInput('quick-filter-exclude-key')">X</button>
+                <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-key')">X</button>
             </div>
             <br>
             <label class="lbl_width">Exclude Value</label>
             <div class="input-container">
-                <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
-                <button class="clear-btn" onclick="clearInput('quick-filter-exclude-value')">X</button>
+                <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-value')">X</button>
             </div>
             <br><br>
-            <button class="nicebutton" onclick="addUiFilter()">Add as filter</button>
+            
+            <button class="nicebutton" onclick="quickFilterAdd()">Add as filter</button>
         </div>
         
-
+        <!-- Menu: Filter -->
         <div class="menu-filter">
             <h2>Filter</h2>
             <br>
@@ -159,6 +165,7 @@
         </div>
     </div>
 
+    <!-- Popup Windows (one for key, value) -->
     <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
         Key: 
         <button id="action-button-key-include">Include</button>
@@ -170,38 +177,47 @@
         <button id="action-button-value-exclude">Exclude</button>
     </div>
 
+
+    <!-- JavaScript yay -->
     <script>
+        // The reference data. This is always unfiltered.
         let logs_orig = [
             { timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
             { timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
             { timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
-            { timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234" }
+            { timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234", addr: 0x1235, offset: 0x643643, size: 0x23643,
+                "info": "microsoft threat intelligence provider"
+             }
         ];
-        let logs = logs_orig.slice();  // copy
+        // The actual data. filtered from logs_orig
+        let logs = logs_orig.slice();  // copy first
         
+        // List of all filters
         let filters = [
             //{ type: "key", action: "include", key: "level", value: "" },
             //{ type: "key", action: "exclude", key: "level", value: "INFO" },
             //{ type: "value", action: "include", key: "", value: "memory" }
         ]
 
+        // Popup menu data uargh
         let currentLogEntry = null;
         let currentKey = null;
         let currentValue = null;
-        
         let hideTimeout = null;
         let popupShown = false;
 
-        function clearInput(inputId) {
+
+        // Quick Filter
+
+        function quickFilterClear(inputId) {
             document.getElementById(inputId).value = "";
         }
 
-
-        function quickFilter() {
+        function quickFilterOnChange() {
             refresh();
         }
 
-        function addUiFilter() {
+        function quickFilterAdd() {
             const keyInclude = document.getElementById("quick-filter-include-key").value;
             const valueInclude = document.getElementById("quick-filter-include-value").value;
             const keyExclude = document.getElementById("quick-filter-exclude-key").value;
@@ -226,6 +242,118 @@
             document.getElementById("quick-filter-exclude-key").value = "";
             document.getElementById("quick-filter-exclude-value").value = "";
         }
+
+
+        // Menu Filter UI
+
+        function menuFiltersRefresh() {
+            const filterContainer = document.getElementById("filter-container"); 
+            filterContainer.innerHTML = ""; // Clear previous filters
+
+            if (filters.length === 0) {
+                // show text if no filters are set
+                const filterDiv = document.createElement("div");
+                filterDiv.textContent = "Hover over a key or value to add a filter";
+                filterContainer.appendChild(filterDiv);
+                return;
+            }
+
+            filters.forEach((filter, index) => {
+                const filterDiv = document.createElement("div");
+                filterDiv.classList.add("filter-item");
+
+                if (filter.type == "key") {
+                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.key} `;
+                } else if (filter.type == "value") {
+                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.value} `;
+                }
+                
+                // Add a remove button
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "X";
+                // make it bigger
+                // margin
+                removeButton.style.marginLeft = "3px";
+                removeButton.style.marginRight = "3px";
+                removeButton.style.paddingLeft = "3px";
+                removeButton.style.paddingRight = "3px";
+                removeButton.onclick = () => removeFilter(index);
+
+                filterDiv.appendChild(removeButton);
+                filterContainer.appendChild(filterDiv);
+            });
+        }
+
+
+        // Filter Backend
+        
+        function addFilter(type, action, _logentry, key, value) {
+            filters.push({
+                type: type,
+                action: action,
+                key: key,
+                value: value
+            });
+            refresh()
+        }
+
+        function removeFilter(index) {
+            filters.splice(index, 1); // Remove the filter from the array
+            refresh()
+        }
+
+        function filterOrigLogs(logs, filters) {
+            // copy filters
+            filters = filters.slice();
+
+            // add quick filters
+            const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
+            if (keyInclude) {
+                filters.push({ type: "key", action: "include", key: keyInclude, value: "" });
+            }
+            if (valueInclude) {
+                filters.push({ type: "value", action: "include", key: "", value: valueInclude });
+            }
+            if (keyExclude) {
+                filters.push({ type: "key", action: "exclude", key: keyExclude, value: "" });
+            }
+            if (valueExclude) {
+                filters.push({ type: "value", action: "exclude", key: "", value: valueExclude });
+            }
+
+            return logs.filter(log => {
+                return filters.every(filter => {
+                    if (filter.type === "key") {
+                        if (filter.action === "exclude") {
+                            return !log.hasOwnProperty(filter.key);
+                        } else if (filter.action === "include") {
+                            return log.hasOwnProperty(filter.key);
+                        }
+                    } else if (filter.type === "value") {
+                        // check all properties of log if one of their values contains the filter value
+                        let isContain = Object.values(log).some(value => {
+                            //return value.includes(filter.value);
+                            return String(value).toLowerCase().includes(filter.value.toLowerCase());
+                        });
+                        if (filter.action === "exclude") {
+                                return !isContain;
+                        } else if (filter.action === "include") {
+                            return isContain;
+                        }
+                    }
+
+                    // Should not be reached? only with empty filters
+                    // Default case (if filter doesn't match)
+                    return true;
+                });
+            });
+        }
+
+
+        // Logs
 
         function renderLogs() {
             const container = document.getElementById("log-container");
@@ -256,6 +384,23 @@
                 });
                 logDiv.appendChild(entryDiv);
                 container.appendChild(logDiv);
+            });
+        }
+
+        // Logs popup
+
+        function popupInit() {
+            document.getElementById("action-button-key-include").addEventListener("click", () => {
+                addFilter("key", "include", currentLogEntry, currentKey, currentValue);
+            });
+            document.getElementById("action-button-key-exclude").addEventListener("click", () => {
+                addFilter("key", "exclude", currentLogEntry, currentKey, currentValue);
+            });
+            document.getElementById("action-button-value-include").addEventListener("click", () => {
+                addFilter("value", "include", currentLogEntry, currentKey, currentValue);
+            });
+            document.getElementById("action-button-value-exclude").addEventListener("click", () => {
+                addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
             });
         }
 
@@ -309,130 +454,13 @@
             clearTimeout(hideTimeout);
         }
 
-        function addFilter(type, action, _logentry, key, value) {
-            filters.push({
-                type: type,
-                action: action,
-                key: key,
-                value: value
-            });
-            refresh()
-        }
-
-        function removeFilter(index) {
-            filters.splice(index, 1); // Remove the filter from the array
-            refresh()
-        }
+        // Main
 
         function refresh() {
-            renderFilters();
-            logs = applyFilters(logs_orig, filters);
+            menuFiltersRefresh();
+            logs = filterOrigLogs(logs_orig, filters);
             renderLogs();
         }
-
-        // You can modify logs[currentLogEntry][currentKey] here if needed
-        document.getElementById("action-button-key-include").addEventListener("click", () => {
-            addFilter("key", "include", currentLogEntry, currentKey, currentValue);
-        });
-        document.getElementById("action-button-key-exclude").addEventListener("click", () => {
-            addFilter("key", "exclude", currentLogEntry, currentKey, currentValue);
-        });
-        document.getElementById("action-button-value-include").addEventListener("click", () => {
-            addFilter("value", "include", currentLogEntry, currentKey, currentValue);
-        });
-        document.getElementById("action-button-value-exclude").addEventListener("click", () => {
-            addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
-        });
-
-
-        function renderFilters() {
-            const filterContainer = document.getElementById("filter-container"); 
-            filterContainer.innerHTML = ""; // Clear previous filters
-
-            if (filters.length === 0) {
-                // show text if no filters are set
-                const filterDiv = document.createElement("div");
-                filterDiv.textContent = "Hover over a key or value to add a filter";
-                filterContainer.appendChild(filterDiv);
-                return;
-            }
-
-            filters.forEach((filter, index) => {
-                const filterDiv = document.createElement("div");
-                filterDiv.classList.add("filter-item");
-
-                if (filter.type == "key") {
-                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.key} `;
-                } else if (filter.type == "value") {
-                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.value} `;
-                }
-                
-                // Add a remove button
-                const removeButton = document.createElement("button");
-                removeButton.textContent = "X";
-                // make it bigger
-                // margin
-                removeButton.style.marginLeft = "3px";
-                removeButton.style.marginRight = "3px";
-                removeButton.style.paddingLeft = "3px";
-                removeButton.style.paddingRight = "3px";
-                removeButton.onclick = () => removeFilter(index);
-
-                filterDiv.appendChild(removeButton);
-                filterContainer.appendChild(filterDiv);
-            });
-        }
-
-        function applyFilters(logs, filters) {
-            // copy filters
-            filters = filters.slice();
-
-            // add quick filters
-            const keyInclude = document.getElementById("quick-filter-include-key").value;
-            const valueInclude = document.getElementById("quick-filter-include-value").value;
-            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
-            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
-            if (keyInclude) {
-                filters.push({ type: "key", action: "include", key: keyInclude, value: "" });
-            }
-            if (valueInclude) {
-                filters.push({ type: "value", action: "include", key: "", value: valueInclude });
-            }
-            if (keyExclude) {
-                filters.push({ type: "key", action: "exclude", key: keyExclude, value: "" });
-            }
-            if (valueExclude) {
-                filters.push({ type: "value", action: "exclude", key: "", value: valueExclude });
-            }
-
-            return logs.filter(log => {
-                return filters.every(filter => {
-                    if (filter.type === "key") {
-                        if (filter.action === "exclude") {
-                            return !log.hasOwnProperty(filter.key);
-                        } else if (filter.action === "include") {
-                            return log.hasOwnProperty(filter.key);
-                        }
-                    } else if (filter.type === "value") {
-                        // check all properties of log if one of their values contains the filter value
-                        let isContain = Object.values(log).some(value => {
-                            //return value.includes(filter.value);
-                            return String(value).toLowerCase().includes(filter.value.toLowerCase());
-                        });
-                        if (filter.action === "exclude") {
-                                return !isContain;
-                        } else if (filter.action === "include") {
-                            return isContain;
-                        }
-                    }
-
-                    // Should not be reached? only with empty filters
-                    // Default case (if filter doesn't match)
-                    return true;
-                });
-            });
-        }
-
 
         function uploadFile() {
             const fileInput = document.getElementById("fileInput");
@@ -454,11 +482,10 @@
                     console.error("Invalid JSON file:", error);
                 }
             };
-
-            // Start reading the file
             reader.readAsText(file);
         }
 
+        popupInit();
         refresh()
     </script>
 </body>
