@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SemiDataSieve</title>
     <style>
+        .nicebutton {
+            padding: 5px 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -45,7 +52,7 @@
         }
         
         .menu {
-            width: 300px;
+            width: 18em;
             background-color: #333;
             color: white;
         }
@@ -82,15 +89,10 @@
 
 /* Style for the clear button */
 .clear-btn {
-    position: absolute;
-    right: 10px; /* Position it on the right edge of the input field */
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #888;
-    font-size: 16px;
-    cursor: pointer;
+    padding-left: 3px;
+    padding-right: 3px;
+    margin-left: 3px;
+    margin-right: 3px;
 }
 
 /* Optional hover effect */
@@ -99,8 +101,12 @@
 }
 
 .lbl_width {
-    width: 3em;
+    width: 6.5em;
     display: inline-block;
+}
+
+.input-short {
+    width: 8em;
 }
     </style>
 </head>
@@ -113,42 +119,41 @@
             key:value filtering<br>
             <br>
             <input type="file" id="fileInput">
-            <button onclick="uploadFile()">Private Upload</button>
+            <button class="nicebutton" onclick="uploadFile()">Private Upload</button>
         </div>
         
         <div class="menu-quick">
-            <h3>Quick Include</h3> <br>
-            <label class="lbl_width">Key</label>
+            <h2>Quick Filter</h2> <br>
+            <label class="lbl_width">Include Key</label>
             <div class="input-container">
-                <input type="text" id="quick-filter-include-key" onchange="quickFilter()">
+                <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilter()">
                 <button class="clear-btn" onclick="clearInput('quick-filter-include-key')">X</button>
             </div>
             <br>
-            <label class="lbl_width">Value</label>
+            <label class="lbl_width">Include Value</label>
             <div class="input-container">
-                <input type="text" id="quick-filter-include-value" onchange="quickFilter()">
+                <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilter()">
                 <button class="clear-btn" onclick="clearInput('quick-filter-include-value')">X</button>
             </div>
             <br><br>
-            <h3>Quick Exclude</h3> <br>
-            <label class="lbl_width">Key</label>
+            <label class="lbl_width">Exclude Key</label>
             <div class="input-container">
-                <input type="text" id="quick-filter-exclude-key" onchange="quickFilter()">
+                <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilter()">
                 <button class="clear-btn" onclick="clearInput('quick-filter-exclude-key')">X</button>
             </div>
             <br>
-            <label class="lbl_width">Value</label>
+            <label class="lbl_width">Exclude Value</label>
             <div class="input-container">
-                <input type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
+                <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
                 <button class="clear-btn" onclick="clearInput('quick-filter-exclude-value')">X</button>
             </div>
             <br><br>
-            <button onclick="addUiFilter()">Add as filter</button>
+            <button class="nicebutton" onclick="addUiFilter()">Add as filter</button>
         </div>
         
 
         <div class="menu-filter">
-            <h3>Filter</h3>
+            <h2>Filter</h2>
             <br>
             <div id="filter-container"></div>
         </div>
@@ -175,9 +180,9 @@
         let logs = logs_orig.slice();  // copy
         
         let filters = [
-            { type: "key", action: "include", key: "level", value: "" },
+            //{ type: "key", action: "include", key: "level", value: "" },
             //{ type: "key", action: "exclude", key: "level", value: "INFO" },
-            { type: "value", action: "include", key: "", value: "memory" }
+            //{ type: "value", action: "include", key: "", value: "memory" }
         ]
 
         let currentLogEntry = null;
