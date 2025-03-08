@@ -48,8 +48,23 @@
             width: 300px;
             background-color: #333;
             color: white;
+        }
+        .menu-head {
+            background-color: #493f3f;
+            color: white;
             padding: 20px;
         }
+        .menu-quick {
+            background-color: #3f493f;
+            color: white;
+            padding: 20px;
+        }
+        .menu-filter {
+            background-color: #79825f;
+            color: white;
+            padding: 20px;
+        }
+
         .popup {
             position: absolute;
             background: white;
@@ -58,28 +73,85 @@
             display: none;
             z-index: 100;
         }
+
+        /* Container for each input field and the clear button */
+.input-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Style for the clear button */
+.clear-btn {
+    position: absolute;
+    right: 10px; /* Position it on the right edge of the input field */
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Optional hover effect */
+.clear-btn:hover {
+    color: red;
+}
+
+.lbl_width {
+    width: 3em;
+    display: inline-block;
+}
     </style>
 </head>
 <body>
     <div class="log-container" id="log-container"></div>
     <div class="menu">
-        <h2>SemiDataSieve</h2>
-        <br>
-        key:value filtering<br>
-        <br>
-        Quick Include: <br>
-        Key: <input type="text" id="quick-filter-include-key" onchange="quickFilter()"> <br>
-        Value: <input type="text" id="quick-filter-include-value" onchange="quickFilter()">
-        <br><br>
-        Quick Exclude: <br>
-        Key: <input type="text" id="quick-filter-exclude-key" onchange="quickFilter()"><br>
-        Value: <input type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
+        <div class="menu-head">
+            <h2>SemiDataSieve</h2>
+            <br>
+            key:value filtering<br>
+            <br>
+            <input type="file" id="fileInput">
+            <button onclick="uploadFile()">Private Upload</button>
+        </div>
+        
+        <div class="menu-quick">
+            <h3>Quick Include</h3> <br>
+            <label class="lbl_width">Key</label>
+            <div class="input-container">
+                <input type="text" id="quick-filter-include-key" onchange="quickFilter()">
+                <button class="clear-btn" onclick="clearInput('quick-filter-include-key')">X</button>
+            </div>
+            <br>
+            <label class="lbl_width">Value</label>
+            <div class="input-container">
+                <input type="text" id="quick-filter-include-value" onchange="quickFilter()">
+                <button class="clear-btn" onclick="clearInput('quick-filter-include-value')">X</button>
+            </div>
+            <br><br>
+            <h3>Quick Exclude</h3> <br>
+            <label class="lbl_width">Key</label>
+            <div class="input-container">
+                <input type="text" id="quick-filter-exclude-key" onchange="quickFilter()">
+                <button class="clear-btn" onclick="clearInput('quick-filter-exclude-key')">X</button>
+            </div>
+            <br>
+            <label class="lbl_width">Value</label>
+            <div class="input-container">
+                <input type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
+                <button class="clear-btn" onclick="clearInput('quick-filter-exclude-value')">X</button>
+            </div>
+            <br><br>
+            <button onclick="addUiFilter()">Add as filter</button>
+        </div>
+        
 
-        <br><br>
-        <button onclick="addUiFilter()">Add as filter</button>
-        <br><br>
-        Filter:
-        <div id="filter-container"></div>
+        <div class="menu-filter">
+            <h3>Filter</h3>
+            <br>
+            <div id="filter-container"></div>
+        </div>
     </div>
 
     <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
@@ -115,8 +187,12 @@
         let hideTimeout = null;
         let popupShown = false;
 
+        function clearInput(inputId) {
+            document.getElementById(inputId).value = "";
+        }
+
+
         function quickFilter() {
-            console.log("QUICK");
             refresh();
         }
 
@@ -246,7 +322,6 @@
         function refresh() {
             renderFilters();
             logs = applyFilters(logs_orig, filters);
-            //console.log(logs);
             renderLogs();
         }
 
@@ -351,6 +426,32 @@
                     return true;
                 });
             });
+        }
+
+
+        function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0]; // Get the selected file
+            
+            if (!file) {
+                alert("No file selected!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+                try {
+                    const jsonData = JSON.parse(fileContent);
+                    logs_orig = jsonData;
+                    refresh();
+                } catch (error) {
+                    console.error("Invalid JSON file:", error);
+                }
+            };
+
+            // Start reading the file
+            reader.readAsText(file);
         }
 
         refresh()
