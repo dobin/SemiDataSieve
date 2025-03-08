@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SemiDataSieve</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #f4f4f4;
+        }
+        
+        .log-line {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-entry {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .log-key, .log-value {
+            position: relative;
+            cursor: pointer;
+        }
+        .log-key {
+            font-weight: bold;
+        }
+        .log-value {
+            background-color: white;
+            padding: 3px 5px;
+            border-radius: 3px;
+        }
+        
+        .menu {
+            width: 300px;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+        }
+        .popup {
+            position: absolute;
+            background: white;
+            border: 1px solid black;
+            padding: 5px;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="log-container" id="log-container"></div>
+    <div class="menu">
+        <div id="filter-container"></div>
+    </div>
+
+    <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
+        Key: 
+        <button id="action-button-key-include">Include</button>
+        <button id="action-button-key-exclude">Exclude</button>
+    </div>
+    <div class="popup" id="popup_value" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
+        Value:
+        <button id="action-button-value-include">Include</button>
+        <button id="action-button-value-exclude">Exclude</button>
+    </div>
+
+    <script>
+        let logs_orig = [
+            { timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
+            { timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
+            { timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
+            { timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234" }
+        ];
+        let logs = logs_orig.slice();  // copy
+        
+        let filters = [
+            { type: "key", action: "include", key: "level", value: "" },
+            //{ type: "key", action: "exclude", key: "level", value: "INFO" },
+            { type: "value", action: "include", key: "", value: "memory" }
+        ]
+
+        let currentLogEntry = null;
+        let currentKey = null;
+        let currentValue = null;
+        
+        let hideTimeout = null;
+        let popupShown = false;
+
+        function renderLogs() {
+            const container = document.getElementById("log-container");
+            container.innerHTML = "";
+            logs.forEach((log, logIndex) => {
+                const logDiv = document.createElement("div");
+                logDiv.classList.add("log-line");
+                const entryDiv = document.createElement("div");
+                entryDiv.classList.add("log-entry");
+                Object.entries(log).forEach(([key, value]) => {
+                    const keySpan = document.createElement("span");
+                    keySpan.classList.add("log-key");
+                    keySpan.textContent = key + ": ";
+                    keySpan.dataset.logIndex = logIndex;
+                    keySpan.dataset.key = key;
+                    keySpan.onmouseenter = showPopupKey;
+                    
+                    const valueSpan = document.createElement("span");
+                    valueSpan.classList.add("log-value");
+                    valueSpan.textContent = value;
+                    valueSpan.dataset.logIndex = logIndex;
+                    valueSpan.dataset.key = key;
+                    valueSpan.dataset.value = value;
+                    valueSpan.onmouseenter = showPopupValue;
+                    
+                    entryDiv.appendChild(keySpan);
+                    entryDiv.appendChild(valueSpan);
+                });
+                logDiv.appendChild(entryDiv);
+                container.appendChild(logDiv);
+            });
+        }
+
+        function showPopupKey(event) {
+            showPopup(event, "key");
+        }
+        function showPopupValue(event) {
+            showPopup(event, "value");
+        }
+
+        function showPopup(event, type) {
+            if (popupShown) {
+                realHidePopup();
+                cancelHidePopup();
+                popupShown = false;
+            }
+            
+            clearTimeout(hideTimeout);
+            popupName = "popup_" + type
+            const popup = document.getElementById(popupName);
+            popup.style.left = `${event.pageX + 5}px`;
+            popup.style.top = `${event.pageY + 5}px`;
+            popup.style.display = "block";
+            
+            currentLogEntry = event.target.dataset.logIndex;
+            currentKey = event.target.dataset.key;
+            currentValue = event.target.dataset.value || "";
+
+            popupShown = true;
+
+            hideTimeout = setTimeout(() => {
+                document.getElementById("popup_key").style.display = "none";
+                document.getElementById("popup_value").style.display = "none";
+                popupShown = false;
+            }, 1500);
+        }
+
+        function hidePopup() {
+            hideTimeout = setTimeout(() => {
+                realHidePopup();
+                popupShown = false;
+            }, 500);
+        }
+
+        function realHidePopup() {
+            document.getElementById("popup_key").style.display = "none";
+            document.getElementById("popup_value").style.display = "none";
+        }
+
+        function cancelHidePopup() {
+            clearTimeout(hideTimeout);
+        }
+
+        function addFilter(type, action, _logentry, key, value) {
+            filters.push({
+                type: type,
+                action: action,
+                key: key,
+                value: value
+            });
+            refresh()
+        }
+
+        function removeFilter(index) {
+            filters.splice(index, 1); // Remove the filter from the array
+            refresh()
+        }
+
+        function refresh() {
+            renderFilters();
+            logs = applyFilters(logs_orig, filters);
+            //console.log(logs);
+            renderLogs();
+        }
+
+        // You can modify logs[currentLogEntry][currentKey] here if needed
+        document.getElementById("action-button-key-include").addEventListener("click", () => {
+            addFilter("key", "include", currentLogEntry, currentKey, currentValue);
+        });
+        document.getElementById("action-button-key-exclude").addEventListener("click", () => {
+            addFilter("key", "exclude", currentLogEntry, currentKey, currentValue);
+        });
+        document.getElementById("action-button-value-include").addEventListener("click", () => {
+            addFilter("value", "include", currentLogEntry, currentKey, currentValue);
+        });
+        document.getElementById("action-button-value-exclude").addEventListener("click", () => {
+            addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
+        });
+
+
+        function renderFilters() {
+            const filterContainer = document.getElementById("filter-container"); 
+            filterContainer.innerHTML = ""; // Clear previous filters
+
+            filters.forEach((filter, index) => {
+                const filterDiv = document.createElement("div");
+                filterDiv.classList.add("filter-item");
+
+                if (filter.type == "key") {
+                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.key} `;
+                } else if (filter.type == "value") {
+                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.value} `;
+                }
+                
+                // Add a remove button
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "X";
+                removeButton.onclick = () => removeFilter(index);
+
+                filterDiv.appendChild(removeButton);
+                filterContainer.appendChild(filterDiv);
+            });
+        }
+
+        function applyFilters(logs, filters) {
+            return logs.filter(log => {
+                return filters.every(filter => {
+                    if (filter.type === "key") {
+                        if (filter.action === "exclude") {
+                            return !log.hasOwnProperty(filter.key);
+                        } else if (filter.action === "include") {
+                            return log.hasOwnProperty(filter.key);
+                        }
+                    } else if (filter.type === "value") {
+                        // check all properties of log if one of their values contains the filter value
+                        let isContain = Object.values(log).some(value => {
+                            return value.includes(filter.value);
+                        });
+                        if (filter.action === "exclude") {
+                                return !isContain;
+                        } else if (filter.action === "include") {
+                            return isContain;
+                        }
+                    }
+
+                    // Should not be reached? only with empty filters
+                    // Default case (if filter doesn't match)
+                    return true;
+                });
+            });
+        }
+
+        refresh()
+    </script>
+</body>
+</html>
