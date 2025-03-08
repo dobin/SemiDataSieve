@@ -63,6 +63,22 @@
 <body>
     <div class="log-container" id="log-container"></div>
     <div class="menu">
+        <h2>SemiDataSieve</h2>
+        <br>
+        key:value filtering<br>
+        <br>
+        Quick Include: <br>
+        Key: <input type="text" id="quick-filter-include-key" oninput="quickFilter()"> <br>
+        Value: <input type="text" id="quick-filter-include-value" oninput="quickFilter()">
+        <br><br>
+        Quick Exclude: <br>
+        Key: <input type="text" id="quick-filter-exclude-key" oninput="quickFilter()"><br>
+        Value: <input type="text" id="quick-filter-exclude-value" oninput="quickFilter()">
+
+        <br><br>
+        <button onclick="addUiFilter()">Add as filter</button>
+        <br><br>
+        Filter:
         <div id="filter-container"></div>
     </div>
 
@@ -98,6 +114,32 @@
         
         let hideTimeout = null;
         let popupShown = false;
+
+        function addUiFilter() {
+            const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
+
+            if (keyInclude) {
+                addFilter("key", "include", null, keyInclude, "");
+            }
+            if (valueInclude) {
+                addFilter("value", "include", null, "", valueInclude);
+            }
+            if (keyExclude) {
+                addFilter("key", "exclude", null, keyExclude, "");
+            }
+            if (valueExclude) {
+                addFilter("value", "exclude", null, "", valueExclude);
+            }
+
+            // clear
+            document.getElementById("quick-filter-include-key").value = "";
+            document.getElementById("quick-filter-include-value").value = "";
+            document.getElementById("quick-filter-exclude-key").value = "";
+            document.getElementById("quick-filter-exclude-value").value = "";
+        }
 
         function renderLogs() {
             const container = document.getElementById("log-container");
@@ -222,6 +264,14 @@
             const filterContainer = document.getElementById("filter-container"); 
             filterContainer.innerHTML = ""; // Clear previous filters
 
+            if (filters.length === 0) {
+                // show text if no filters are set
+                const filterDiv = document.createElement("div");
+                filterDiv.textContent = "Hover over a key or value to add a filter";
+                filterContainer.appendChild(filterDiv);
+                return;
+            }
+
             filters.forEach((filter, index) => {
                 const filterDiv = document.createElement("div");
                 filterDiv.classList.add("filter-item");
@@ -235,6 +285,12 @@
                 // Add a remove button
                 const removeButton = document.createElement("button");
                 removeButton.textContent = "X";
+                // make it bigger
+                // margin
+                removeButton.style.marginLeft = "3px";
+                removeButton.style.marginRight = "3px";
+                removeButton.style.paddingLeft = "3px";
+                removeButton.style.paddingRight = "3px";
                 removeButton.onclick = () => removeFilter(index);
 
                 filterDiv.appendChild(removeButton);
@@ -254,7 +310,8 @@
                     } else if (filter.type === "value") {
                         // check all properties of log if one of their values contains the filter value
                         let isContain = Object.values(log).some(value => {
-                            return value.includes(filter.value);
+                            //return value.includes(filter.value);
+                            return String(value).toLowerCase().includes(filter.value.toLowerCase());
                         });
                         if (filter.action === "exclude") {
                                 return !isContain;
