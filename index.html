@@ -71,6 +71,11 @@
             color: white;
             padding: 20px;
         }
+        .menu-visibility {
+            background-color: #2f3233;
+            color: white;
+            padding: 20px;
+        }
 
         .popup {
             position: absolute;
@@ -163,6 +168,13 @@
             <br>
             <div id="filter-container"></div>
         </div>
+
+        <!-- Menu: Visibility -->
+        <div class="menu-visibility">
+            <h2>Visibility</h2>
+            <br>
+            <div id="visibility-container"></div>
+        </div>
     </div>
 
     <!-- Popup Windows (one for key, value) -->
@@ -170,6 +182,9 @@
         Key: 
         <button id="action-button-key-include">Include</button>
         <button id="action-button-key-exclude">Exclude</button>
+        <button id="action-button-key-hide">Hide</button>
+        <button id="action-button-key-header">Header</button>
+        <button id="action-button-key-important">Important</button>
     </div>
     <div class="popup" id="popup_value" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
         Value:
@@ -182,10 +197,10 @@
     <script>
         // The reference data. This is always unfiltered.
         let logs_orig = [
-            { timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
-            { timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
-            { timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
-            { timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234", addr: 0x1235, offset: 0x643643, size: 0x23643,
+            { id: 1, timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
+            { id: 2, timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
+            { id: 3, timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
+            { id: 4, timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234", addr: 0x1235, offset: 0x643643, size: 0x23643,
                 "info": "microsoft threat intelligence provider"
              }
         ];
@@ -197,6 +212,10 @@
             //{ type: "key", action: "include", key: "level", value: "" },
             //{ type: "key", action: "exclude", key: "level", value: "INFO" },
             //{ type: "value", action: "include", key: "", value: "memory" }
+        ]
+        let visibility = [
+            { type: "key", action: "hide", key: "stuff", value: "" },
+            { type: "key", action: "header", key: "id", value: "" },
         ]
 
         // Popup menu data uargh
@@ -352,6 +371,63 @@
             });
         }
 
+        // Visibility backend
+
+        function addVisibility(type, action, _logentry, key, value) {
+            visibility.push({
+                type: type,
+                action: action,
+                key: key,
+                value: value
+            });
+            refresh()
+        }
+
+        function removeVisibility(index) {
+            visibility.splice(index, 1); // Remove the filter from the array
+            refresh()
+        }
+
+
+        // Menu Visibility UI
+
+        function menuVisibilityRefresh() {
+            const visibilityContainer = document.getElementById("visibility-container"); 
+            visibilityContainer.innerHTML = ""; // Clear previous visibility
+
+            if (visibility.length === 0) {
+                const visibilityDiv = document.createElement("div");
+                visibilityDiv.textContent = "";
+                visibilityContainer.appendChild(visibilityDiv);
+                return;
+            }
+
+            visibility.forEach((visibility, index) => {
+                const visibilityDiv = document.createElement("div");
+                visibilityDiv.classList.add("visibility-item");
+
+                if (visibility.type == "key") {
+                    visibilityDiv.textContent = `${visibility.action} ${visibility.type}: ${visibility.key} `;
+                } else if (visibility.type == "value") {
+                    visibilityDiv.textContent = `${visibility.action} ${visibility.type}: ${visibility.value} `;
+                }
+                
+                // Add a remove button
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "X";
+                // make it bigger
+                // margin
+                removeButton.style.marginLeft = "3px";
+                removeButton.style.marginRight = "3px";
+                removeButton.style.paddingLeft = "3px";
+                removeButton.style.paddingRight = "3px";
+                removeButton.onclick = () => removeVisibility(index);
+
+                visibilityDiv.appendChild(removeButton);
+                visibilityContainer.appendChild(visibilityDiv);
+            });
+        }
+
 
         // Logs
 
@@ -361,9 +437,18 @@
             logs.forEach((log, logIndex) => {
                 const logDiv = document.createElement("div");
                 logDiv.classList.add("log-line");
+
+                const entryDivHeader = document.createElement("div");
+                entryDivHeader.classList.add("log-entry-header");
+
                 const entryDiv = document.createElement("div");
                 entryDiv.classList.add("log-entry");
                 Object.entries(log).forEach(([key, value]) => {
+                    // check if key is in visibility
+                    if (visibility.some(filter => filter.key === key && filter.action === "hide")) {
+                        return;
+                    }
+
                     const keySpan = document.createElement("span");
                     keySpan.classList.add("log-key");
                     keySpan.textContent = key + ": ";
@@ -379,10 +464,17 @@
                     valueSpan.dataset.value = value;
                     valueSpan.onmouseenter = showPopupValue;
                     
-                    entryDiv.appendChild(keySpan);
-                    entryDiv.appendChild(valueSpan);
+                    if (visibility.some(filter => filter.key === key && filter.action === "header")) {
+                        entryDivHeader.appendChild(keySpan);
+                        entryDivHeader.appendChild(valueSpan);
+                    } else {
+                        entryDiv.appendChild(keySpan);
+                        entryDiv.appendChild(valueSpan);
+                    }
                 });
+                logDiv.appendChild(entryDivHeader);
                 logDiv.appendChild(entryDiv);
+                
                 container.appendChild(logDiv);
             });
         }
@@ -401,6 +493,16 @@
             });
             document.getElementById("action-button-value-exclude").addEventListener("click", () => {
                 addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
+            });
+
+            document.getElementById("action-button-key-hide").addEventListener("click", () => {
+                addVisibility("key", "hide", currentLogEntry, currentKey, currentValue);
+            });
+            document.getElementById("action-button-key-header").addEventListener("click", () => {
+                addVisibility("key", "header", currentLogEntry, currentKey, currentValue);
+            });
+            document.getElementById("action-button-key-important").addEventListener("click", () => {
+                addVisibility("key", "important", currentLogEntry, currentKey, currentValue);
             });
         }
 
@@ -457,6 +559,7 @@
         // Main
 
         function refresh() {
+            menuVisibilityRefresh();
             menuFiltersRefresh();
             logs = filterOrigLogs(logs_orig, filters);
             renderLogs();
