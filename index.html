@@ -68,12 +68,12 @@
         key:value filtering<br>
         <br>
         Quick Include: <br>
-        Key: <input type="text" id="quick-filter-include-key" oninput="quickFilter()"> <br>
-        Value: <input type="text" id="quick-filter-include-value" oninput="quickFilter()">
+        Key: <input type="text" id="quick-filter-include-key" onchange="quickFilter()"> <br>
+        Value: <input type="text" id="quick-filter-include-value" onchange="quickFilter()">
         <br><br>
         Quick Exclude: <br>
-        Key: <input type="text" id="quick-filter-exclude-key" oninput="quickFilter()"><br>
-        Value: <input type="text" id="quick-filter-exclude-value" oninput="quickFilter()">
+        Key: <input type="text" id="quick-filter-exclude-key" onchange="quickFilter()"><br>
+        Value: <input type="text" id="quick-filter-exclude-value" onchange="quickFilter()">
 
         <br><br>
         <button onclick="addUiFilter()">Add as filter</button>
@@ -114,6 +114,11 @@
         
         let hideTimeout = null;
         let popupShown = false;
+
+        function quickFilter() {
+            console.log("QUICK");
+            refresh();
+        }
 
         function addUiFilter() {
             const keyInclude = document.getElementById("quick-filter-include-key").value;
@@ -299,6 +304,27 @@
         }
 
         function applyFilters(logs, filters) {
+            // copy filters
+            filters = filters.slice();
+
+            // add quick filters
+            const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
+            if (keyInclude) {
+                filters.push({ type: "key", action: "include", key: keyInclude, value: "" });
+            }
+            if (valueInclude) {
+                filters.push({ type: "value", action: "include", key: "", value: valueInclude });
+            }
+            if (keyExclude) {
+                filters.push({ type: "key", action: "exclude", key: keyExclude, value: "" });
+            }
+            if (valueExclude) {
+                filters.push({ type: "value", action: "exclude", key: "", value: valueExclude });
+            }
+
             return logs.filter(log => {
                 return filters.every(filter => {
                     if (filter.type === "key") {
