@@ -52,7 +52,7 @@
         }
         
         .menu {
-            width: 18em;
+            width: 19em;
             background-color: #333;
             color: white;
         }
@@ -100,6 +100,15 @@
     margin-right: 3px;
 }
 
+/* only for modern browsers? */
+input[type="checkbox"] {
+    accent-color: rgb(53, 52, 52);
+}
+
+.checkbox-nice {
+    margin-right: 0.5em;
+}
+
 /* Optional hover effect */
 .clear-btn:hover {
     color: red;
@@ -133,26 +142,32 @@
         <div class="menu-quick">
             <h2>Quick Filter</h2> <br>
 
-            <label class="lbl_width">Include Key</label>
+            <input type="checkbox" checked id="myCheckbox_include_key" onclick="handleQuickCheckboxClick('include_key')"> 
+            <label class="lbl_width">include key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-key')">X</button>
             </div>
             <br>
-            <label class="lbl_width">Include Value</label>
+
+            <input type="checkbox" checked id="myCheckbox_include_value" onclick="handleQuickCheckboxClick('include_value')"> 
+            <label class="lbl_width">include value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-value')">X</button>
             </div>
             <br><br>
             
-            <label class="lbl_width">Exclude Key</label>
+            <input type="checkbox" checked id="myCheckbox_exclude_key" onclick="handleQuickCheckboxClick('exclude_key')"> 
+            <label class="lbl_width">exclude key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-key')">X</button>
             </div>
             <br>
-            <label class="lbl_width">Exclude Value</label>
+
+            <input type="checkbox" checked id="myCheckbox_exclude_value" onclick="handleQuickCheckboxClick('exclude_value')"> 
+            <label class="lbl_width">exclude value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-value')">X</button>
@@ -179,7 +194,7 @@
 
     <!-- Popup Windows (one for key, value) -->
     <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
-        Key: 
+        Key:
         <button id="action-button-key-include">Include</button>
         <button id="action-button-key-exclude">Exclude</button>
         <button id="action-button-key-hide">Hide</button>
@@ -206,12 +221,19 @@
         ];
         // The actual data. filtered from logs_orig
         let logs = logs_orig.slice();  // copy first
-        
+
+        let quick_filters = {
+            "include_key": true,
+            "include_value": true,
+            "exclude_key": true,
+            "exclude_value": true
+        }
+
         // List of all filters
         let filters = [
-            //{ type: "key", action: "include", key: "level", value: "" },
-            //{ type: "key", action: "exclude", key: "level", value: "INFO" },
-            //{ type: "value", action: "include", key: "", value: "memory" }
+            { type: "key", action: "include", key: "level", value: "", active: true },
+            //{ type: "key", action: "exclude", key: "level", value: "INFO", active: true },
+            //{ type: "value", action: "include", key: "", value: "memory", active: true }
         ]
         let visibility = [
             { type: "key", action: "hide", key: "stuff", value: "" },
@@ -227,6 +249,10 @@
 
 
         // Quick Filter
+
+        function handleQuickCheckboxClick(id) {
+            quick_filters[id] = document.getElementById("myCheckbox_" + id).checked;
+        }
 
         function quickFilterClear(inputId) {
             document.getElementById(inputId).value = "";
@@ -279,19 +305,33 @@
 
             filters.forEach((filter, index) => {
                 const filterDiv = document.createElement("div");
-                filterDiv.classList.add("filter-item");
 
-                if (filter.type == "key") {
-                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.key} `;
-                } else if (filter.type == "value") {
-                    filterDiv.textContent = `${filter.action} ${filter.type}: ${filter.value} `;
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.classList.add("checkbox-nice");
+                if (filter.active === false) {
+                    checkbox.checked = false;
+                } else {
+                    checkbox.checked = true;
                 }
-                
+                checkbox.onchange = () => {
+                    console.log("Checkbox changed", index, checkbox.checked);
+                    filters[index].active = checkbox.checked;
+                    refresh();
+                };
+                filterDiv.appendChild(checkbox);
+
+                filterDiv.classList.add("filter-item");
+                const filterText = document.createTextNode(
+                    filter.type === "key"
+                        ? `${filter.action} ${filter.type}: ${filter.key} `
+                        : `${filter.action} ${filter.type}: ${filter.value} `
+                );
+                filterDiv.appendChild(filterText);
+
                 // Add a remove button
                 const removeButton = document.createElement("button");
                 removeButton.textContent = "X";
-                // make it bigger
-                // margin
                 removeButton.style.marginLeft = "3px";
                 removeButton.style.marginRight = "3px";
                 removeButton.style.paddingLeft = "3px";
@@ -301,6 +341,7 @@
                 filterDiv.appendChild(removeButton);
                 filterContainer.appendChild(filterDiv);
             });
+
         }
 
 
@@ -311,7 +352,8 @@
                 type: type,
                 action: action,
                 key: key,
-                value: value
+                value: value,
+                active: true
             });
             refresh()
         }
@@ -344,7 +386,11 @@
             }
 
             return logs.filter(log => {
-                return filters.every(filter => {
+                console.log("Filtering log", filters);
+                return filters
+                .filter(filter => filter.active)  // Keep only active filters
+                .every(filter => {
+                    console.log("Filtering", filter);
                     if (filter.type === "key") {
                         if (filter.action === "exclude") {
                             return !log.hasOwnProperty(filter.key);
