@@ -115,12 +115,12 @@ input[type="checkbox"] {
 }
 
 .lbl_width {
-    width: 6.5em;
+    width: 7.5em;
     display: inline-block;
 }
 
 .input-short {
-    width: 8em;
+    width: 7em;
 }
     </style>
 </head>
@@ -143,7 +143,7 @@ input[type="checkbox"] {
             <h2>Quick Filter</h2> <br>
 
             <input type="checkbox" checked id="myCheckbox_include_key" onclick="handleQuickCheckboxClick('include_key')"> 
-            <label class="lbl_width">include key</label>
+            <label class="lbl_width">include by key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-key')">X</button>
@@ -151,7 +151,7 @@ input[type="checkbox"] {
             <br>
 
             <input type="checkbox" checked id="myCheckbox_include_value" onclick="handleQuickCheckboxClick('include_value')"> 
-            <label class="lbl_width">include value</label>
+            <label class="lbl_width">include by value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-value')">X</button>
@@ -159,7 +159,7 @@ input[type="checkbox"] {
             <br><br>
             
             <input type="checkbox" checked id="myCheckbox_exclude_key" onclick="handleQuickCheckboxClick('exclude_key')"> 
-            <label class="lbl_width">exclude key</label>
+            <label class="lbl_width">exclude by key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-key')">X</button>
@@ -167,7 +167,7 @@ input[type="checkbox"] {
             <br>
 
             <input type="checkbox" checked id="myCheckbox_exclude_value" onclick="handleQuickCheckboxClick('exclude_value')"> 
-            <label class="lbl_width">exclude value</label>
+            <label class="lbl_width">exclude by value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-value')">X</button>
@@ -222,13 +222,6 @@ input[type="checkbox"] {
         // The actual data. filtered from logs_orig
         let logs = logs_orig.slice();  // copy first
 
-        let quick_filters = {
-            "include_key": true,
-            "include_value": true,
-            "exclude_key": true,
-            "exclude_value": true
-        }
-
         // List of all filters
         let filters = [
             { type: "key", action: "include", key: "level", value: "", active: true },
@@ -251,11 +244,13 @@ input[type="checkbox"] {
         // Quick Filter
 
         function handleQuickCheckboxClick(id) {
-            quick_filters[id] = document.getElementById("myCheckbox_" + id).checked;
+            //quick_filters[id] = document.getElementById("myCheckbox_" + id).checked;
+            refresh();
         }
 
         function quickFilterClear(inputId) {
             document.getElementById(inputId).value = "";
+            refresh();
         }
 
         function quickFilterOnChange() {
@@ -324,8 +319,8 @@ input[type="checkbox"] {
                 filterDiv.classList.add("filter-item");
                 const filterText = document.createTextNode(
                     filter.type === "key"
-                        ? `${filter.action} ${filter.type}: ${filter.key} `
-                        : `${filter.action} ${filter.type}: ${filter.value} `
+                        ? `${filter.action} by ${filter.type}: ${filter.key} `
+                        : `${filter.action} by ${filter.type}: ${filter.value} `
                 );
                 filterDiv.appendChild(filterText);
 
@@ -363,34 +358,38 @@ input[type="checkbox"] {
             refresh()
         }
 
-        function filterOrigLogs(logs, filters) {
+        function filterOrigLogs(logs, myfilters) {
             // copy filters
-            filters = filters.slice();
+            myfilters = myfilters.slice();
 
             // add quick filters
+            const keyIncludeChecked = document.getElementById("myCheckbox_include_key").checked;
             const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueIncludeChecked = document.getElementById("myCheckbox_include_value").checked;
             const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExcludeChecked = document.getElementById("myCheckbox_exclude_key").checked;
             const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExcludeChecked = document.getElementById("myCheckbox_exclude_value").checked;
             const valueExclude = document.getElementById("quick-filter-exclude-value").value;
-            if (keyInclude) {
-                filters.push({ type: "key", action: "include", key: keyInclude, value: "" });
+            if (keyInclude && keyIncludeChecked) {
+                myfilters.push({ type: "key", action: "include", key: keyInclude, value: "", active: true });
             }
-            if (valueInclude) {
-                filters.push({ type: "value", action: "include", key: "", value: valueInclude });
+            if (valueInclude && valueIncludeChecked) {
+                myfilters.push({ type: "value", action: "include", key: "", value: valueInclud, active: true });
             }
-            if (keyExclude) {
-                filters.push({ type: "key", action: "exclude", key: keyExclude, value: "" });
+            if (keyExclude && keyExcludeChecked) {
+                myfilters.push({ type: "key", action: "exclude", key: keyExclude, value: "", active: true });
             }
-            if (valueExclude) {
-                filters.push({ type: "value", action: "exclude", key: "", value: valueExclude });
+            if (valueExclude && valueExcludeChecked) {
+                myfilters.push({ type: "value", action: "exclude", key: "", value: valueExclude, active: true });
             }
 
             return logs.filter(log => {
-                console.log("Filtering log", filters);
-                return filters
+                //console.log("Filtering log", filters);
+                return myfilters
                 .filter(filter => filter.active)  // Keep only active filters
                 .every(filter => {
-                    console.log("Filtering", filter);
+                    //console.log("Filtering", filter);
                     if (filter.type === "key") {
                         if (filter.action === "exclude") {
                             return !log.hasOwnProperty(filter.key);
@@ -605,6 +604,7 @@ input[type="checkbox"] {
         // Main
 
         function refresh() {
+            console.log("Refresh!");
             menuVisibilityRefresh();
             menuFiltersRefresh();
             logs = filterOrigLogs(logs_orig, filters);
