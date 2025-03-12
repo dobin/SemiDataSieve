@@ -86,42 +86,63 @@
             z-index: 100;
         }
 
+        .settings {
+            width: 50%;
+            position: absolute;
+            background: white;
+            border: 1px solid black;
+            padding: 5px;
+            display: none;
+            z-index: 100;
+
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #settings-input {
+            width: 100%;  /* Makes it take the full width of the settings div */
+            height: 150px; /* Increases the height */
+            resize: vertical; /* Allows vertical resizing */
+            font-family: monospace; /* Good for JSON input */
+        }
+
         /* Container for each input field and the clear button */
-.input-container {
-    position: relative;
-    display: inline-block;
-}
+        .input-container {
+            position: relative;
+            display: inline-block;
+        }
 
-/* Style for the clear button */
-.clear-btn {
-    padding-left: 3px;
-    padding-right: 3px;
-    margin-left: 3px;
-    margin-right: 3px;
-}
+        /* Style for the clear button */
+        .clear-btn {
+            padding-left: 3px;
+            padding-right: 3px;
+            margin-left: 3px;
+            margin-right: 3px;
+        }
 
-/* only for modern browsers? */
-input[type="checkbox"] {
-    accent-color: rgb(53, 52, 52);
-}
+        /* only for modern browsers? */
+        input[type="checkbox"] {
+            accent-color: rgb(53, 52, 52);
+        }
 
-.checkbox-nice {
-    margin-right: 0.5em;
-}
+        .checkbox-nice {
+            margin-right: 0.5em;
+        }
 
-/* Optional hover effect */
-.clear-btn:hover {
-    color: red;
-}
+        /* Optional hover effect */
+        .clear-btn:hover {
+            color: red;
+        }
 
-.lbl_width {
-    width: 7.5em;
-    display: inline-block;
-}
+        .lbl_width {
+            width: 7.5em;
+            display: inline-block;
+        }
 
-.input-short {
-    width: 7em;
-}
+        .input-short {
+            width: 7em;
+        }
     </style>
 </head>
 
@@ -134,8 +155,7 @@ input[type="checkbox"] {
             <br>
             key:value filtering<br>
             <br>
-            <input type="file" id="fileInput">
-            <button class="nicebutton" onclick="uploadFile()">Private Upload</button>
+            <button class="nicebutton" onclick="settingsShow()">Options</button>
         </div>
         
         <!-- Menu: Quick -->
@@ -207,6 +227,23 @@ input[type="checkbox"] {
         <button id="action-button-value-exclude">Exclude</button>
     </div>
 
+    <!-- Settings Popup -->
+    <div class="settings" id="settings">
+        <div>
+            <h2>Settings</h2>
+            <textarea id="settings-input" placeholder="Paste JSON here"></textarea>
+            <br>
+            <button class="nicebutton" onclick="settings_load_data()">Load</button>
+            <button class="nicebutton" onclick="settings_download_logs()">Download</button>
+            <button class="nicebutton" onclick="settingsShow()">Close</button>
+            <br>
+        </div>
+        <input type="file" id="fileInput">
+        <button class="nicebutton" onclick="settings_upload_file()">Private Upload</button>
+        <div>
+
+        </div>
+    </div>
 
     <!-- JavaScript yay -->
     <script>
@@ -473,6 +510,74 @@ input[type="checkbox"] {
             });
         }
 
+        // Settings
+        function settingsShow() {
+            // toggle
+            if (document.getElementById("settings").style.display === "block") {
+                document.getElementById("settings").style.display = "none";
+                return;
+            }
+
+            // set settings
+            document.getElementById("settings-input").value = JSON.stringify(logs_orig, null, 2);
+            document.getElementById("settings").style.display = "block";
+        }
+
+        function settings_load_data() {
+            const settingsInput = document.getElementById("settings-input");
+            const settingsData = settingsInput.value;
+            try {
+                const jsonData = JSON.parse(settingsData);
+                logs_orig = jsonData;
+                refresh();
+            } catch (error) {
+                console.error("Invalid JSON data:", error);
+            }
+
+            // hide
+            document.getElementById("settings").style.display = "none";
+        }
+
+        function settings_download_logs() {
+            const jsonData = JSON.stringify(logs_orig, null, 2);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "ssds.json";  // File name
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function settings_upload_file() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0]; // Get the selected file
+            
+            if (!file) {
+                alert("No file selected!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+                try {
+                    const jsonData = JSON.parse(fileContent);
+                    logs_orig = jsonData;
+                    refresh();
+                } catch (error) {
+                    console.error("Invalid JSON file:", error);
+                }
+            };
+            reader.readAsText(file);
+
+            // as we are in settings, hide it
+            settingsShow();
+        }
+
 
         // Logs
 
@@ -609,29 +714,6 @@ input[type="checkbox"] {
             menuFiltersRefresh();
             logs = filterOrigLogs(logs_orig, filters);
             renderLogs();
-        }
-
-        function uploadFile() {
-            const fileInput = document.getElementById("fileInput");
-            const file = fileInput.files[0]; // Get the selected file
-            
-            if (!file) {
-                alert("No file selected!");
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const fileContent = event.target.result;
-                try {
-                    const jsonData = JSON.parse(fileContent);
-                    logs_orig = jsonData;
-                    refresh();
-                } catch (error) {
-                    console.error("Invalid JSON file:", error);
-                }
-            };
-            reader.readAsText(file);
         }
 
         popupInit();
