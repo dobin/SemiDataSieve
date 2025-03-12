@@ -352,7 +352,6 @@
                     checkbox.checked = true;
                 }
                 checkbox.onchange = () => {
-                    console.log("Checkbox changed", index, checkbox.checked);
                     filters[index].active = checkbox.checked;
                     refresh();
                 };
@@ -435,46 +434,62 @@
             filterClearStats();
 
             return logs.filter(log => {
-                //console.log("Filtering log", filters);
-                return myfilters
-                .filter(filter => filter.active)  // Keep only active filters
-                .every(filter => {
-                    //console.log("Filtering", filter);
-                    if (filter.type === "key") {
-                        if (filter.action === "exclude") {
-                            if (!log.hasOwnProperty(filter.key)) {
-                                filter.stats++;
-                            }
-                            return !log.hasOwnProperty(filter.key);
-                        } else if (filter.action === "include") {
-                            if (log.hasOwnProperty(filter.key)) {
-                                filter.stats++;
-                            }
-                            return log.hasOwnProperty(filter.key);
-                        }
-                    } else if (filter.type === "value") {
-                        // check all properties of log if one of their values contains the filter value
-                        let isContain = Object.values(log).some(value => {
-                            //return value.includes(filter.value);
-                            return String(value).toLowerCase().includes(filter.value.toLowerCase());
-                        });
-                        if (filter.action === "exclude") {
-                                if (!isContain) {
+                // First: Check for excludes (dominant)
+                stage1_res = myfilters
+                    .filter(filter => filter.active && filter.action === "exclude")
+                    .every(filter => {
+                        if (filter.type === "key") {
+                            if (filter.action === "exclude") {
+                                if (log.hasOwnProperty(filter.key)) {
                                     filter.stats++;
+                                    return false;
                                 }
-                                return !isContain;
-                        } else if (filter.action === "include") {
+                            }
+                        } else if (filter.type === "value") {
+                            let isContain = Object.values(log).some(value => {
+                                return String(value).toLowerCase().includes(filter.value.toLowerCase());
+                            });
                             if (isContain) {
                                 filter.stats++;
+                                return false;
                             }
-                            return isContain;
                         }
-                    }
+                        return true;
+                    });
+                if (! stage1_res) {
+                    // exclude this
+                    return false;
+                }
 
-                    // Should not be reached? only with empty filters
-                    // Default case (if filter doesn't match)
+                // Second: Check if it should be included
+                // true if
+                stage2_filters = myfilters
+                    .filter(filter => filter.active && filter.action === "include")
+                if (stage2_filters.length === 0) {
+                    // no include filters, include all
                     return true;
-                });
+                }
+                stage2_res = stage2_filters
+                    .every(filter => {
+                        if (filter.type === "key") {
+                            if (filter.action === "include") {
+                                if (log.hasOwnProperty(filter.key)) {
+                                    filter.stats++;
+                                    return true;
+                                }
+                            }
+                        } else if (filter.type === "value") {
+                            let isContain = Object.values(log).some(value => {
+                                return String(value).toLowerCase().includes(filter.value.toLowerCase());
+                            });
+                            if (isContain) {
+                                filter.stats++;
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                return stage2_res;
             });
         }
 
@@ -734,7 +749,6 @@
         // Main
 
         function refresh() {
-            console.log("Refresh!");
             logs = filterOrigLogs(logs_orig, filters);
             renderLogs();
 
