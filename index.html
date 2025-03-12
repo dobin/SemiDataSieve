@@ -280,6 +280,11 @@
 
         // Quick Filter
 
+        function filterClearStats() {
+            // set all filter.stat = 0 for all filters
+            filters.forEach(filter => filter.stats = 0);
+        }
+
         function handleQuickCheckboxClick(id) {
             //quick_filters[id] = document.getElementById("myCheckbox_" + id).checked;
             refresh();
@@ -356,21 +361,27 @@
                 filterDiv.classList.add("filter-item");
                 const filterText = document.createTextNode(
                     filter.type === "key"
-                        ? `${filter.action} by ${filter.type}: ${filter.key} `
-                        : `${filter.action} by ${filter.type}: ${filter.value} `
+                        ? `${filter.action} by ${filter.type}: ${filter.key}`
+                        : `${filter.action} by ${filter.type}: ${filter.value}`
                 );
                 filterDiv.appendChild(filterText);
 
                 // Add a remove button
                 const removeButton = document.createElement("button");
                 removeButton.textContent = "X";
-                removeButton.style.marginLeft = "3px";
-                removeButton.style.marginRight = "3px";
-                removeButton.style.paddingLeft = "3px";
-                removeButton.style.paddingRight = "3px";
+                removeButton.style.marginLeft = "6px";
+                removeButton.style.marginRight = "6px";
+                removeButton.style.paddingLeft = "6px";
+                removeButton.style.paddingRight = "6px";
                 removeButton.onclick = () => removeFilter(index);
-
                 filterDiv.appendChild(removeButton);
+
+                // add stats text
+                if (filter.stats != 0) {
+                    const statsText = document.createTextNode(`(${filter.stats})`);
+                    filterDiv.appendChild(statsText);
+                }
+                
                 filterContainer.appendChild(filterDiv);
             });
 
@@ -421,6 +432,8 @@
                 myfilters.push({ type: "value", action: "exclude", key: "", value: valueExclude, active: true });
             }
 
+            filterClearStats();
+
             return logs.filter(log => {
                 //console.log("Filtering log", filters);
                 return myfilters
@@ -429,8 +442,14 @@
                     //console.log("Filtering", filter);
                     if (filter.type === "key") {
                         if (filter.action === "exclude") {
+                            if (!log.hasOwnProperty(filter.key)) {
+                                filter.stats++;
+                            }
                             return !log.hasOwnProperty(filter.key);
                         } else if (filter.action === "include") {
+                            if (log.hasOwnProperty(filter.key)) {
+                                filter.stats++;
+                            }
                             return log.hasOwnProperty(filter.key);
                         }
                     } else if (filter.type === "value") {
@@ -440,8 +459,14 @@
                             return String(value).toLowerCase().includes(filter.value.toLowerCase());
                         });
                         if (filter.action === "exclude") {
+                                if (!isContain) {
+                                    filter.stats++;
+                                }
                                 return !isContain;
                         } else if (filter.action === "include") {
+                            if (isContain) {
+                                filter.stats++;
+                            }
                             return isContain;
                         }
                     }
@@ -710,10 +735,12 @@
 
         function refresh() {
             console.log("Refresh!");
-            menuVisibilityRefresh();
-            menuFiltersRefresh();
             logs = filterOrigLogs(logs_orig, filters);
             renderLogs();
+
+            // After filterOrigLogs for stats
+            menuVisibilityRefresh();
+            menuFiltersRefresh();
         }
 
         popupInit();
