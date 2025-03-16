@@ -1,7 +1,18 @@
-# SemiDataSieve
+# Semi Structured Data Sieve
 
-JavaScript web interface to 
+Web interface to 
 Sort and Filter Records of Semi-Structured Data (array of dictionaries, which have several identical keys). 
+
+Available at: [semidatasieve.r00ted.ch](https://semidatasieve.r00ted.ch)
+
+100% pure JavaScript, no dependencies.
+
+
+## Screenshot
+
+from github:
+
+![Screenshot](https://raw.githubusercontent.com/dobin/SemiDataSieve/master/doc/screenshot.png)
 
 
 ## Filter 
@@ -12,7 +23,6 @@ Sort and Filter Records of Semi-Structured Data (array of dictionaries, which ha
 * Exclude values
 
 Excludes take precedence.
-
 
 
 ## Example
