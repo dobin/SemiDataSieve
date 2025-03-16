@@ -52,29 +52,30 @@
         }
         
         .menu {
-            width: 19em;
+            font-size: 14px;
+            width: 22em;
             background-color: #333;
             color: white;
         }
         .menu-head {
             background-color: #493f3f;
             color: white;
-            padding: 20px;
+            padding: 10px;
         }
         .menu-quick {
             background-color: #3f493f;
             color: white;
-            padding: 20px;
+            padding: 10px;
         }
         .menu-filter {
             background-color: #79825f;
             color: white;
-            padding: 20px;
+            padding: 10px;
         }
         .menu-visibility {
             background-color: #2f3233;
             color: white;
-            padding: 20px;
+            padding: 10px;
         }
 
         .popup {
@@ -143,6 +144,11 @@
         .input-short {
             width: 7em;
         }
+
+        input:read-only {
+            background-color: #DDD;
+            border: 1px solid #DDD;
+            cursor: default;
     </style>
 </head>
 
@@ -163,7 +169,7 @@
             <h2>Quick Filter</h2> <br>
 
             <input type="checkbox" checked id="myCheckbox_include_key" onclick="handleQuickCheckboxClick('include_key')"> 
-            <label class="lbl_width">include by key</label>
+            <label class="lbl_width">include if key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-key')">X</button>
@@ -171,7 +177,7 @@
             <br>
 
             <input type="checkbox" checked id="myCheckbox_include_value" onclick="handleQuickCheckboxClick('include_value')"> 
-            <label class="lbl_width">include by value</label>
+            <label class="lbl_width">include if value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-value')">X</button>
@@ -179,7 +185,7 @@
             <br><br>
             
             <input type="checkbox" checked id="myCheckbox_exclude_key" onclick="handleQuickCheckboxClick('exclude_key')"> 
-            <label class="lbl_width">exclude by key</label>
+            <label class="lbl_width">exclude if key</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-key')">X</button>
@@ -187,7 +193,7 @@
             <br>
 
             <input type="checkbox" checked id="myCheckbox_exclude_value" onclick="handleQuickCheckboxClick('exclude_value')"> 
-            <label class="lbl_width">exclude by value</label>
+            <label class="lbl_width">exclude if value</label>
             <div class="input-container">
                 <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilterOnChange()">
                 <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-value')">X</button>
@@ -357,13 +363,23 @@
                 };
                 filterDiv.appendChild(checkbox);
 
-                filterDiv.classList.add("filter-item");
-                const filterText = document.createTextNode(
-                    filter.type === "key"
-                        ? `${filter.action} by ${filter.type}: ${filter.key}`
-                        : `${filter.action} by ${filter.type}: ${filter.value}`
-                );
-                filterDiv.appendChild(filterText);
+                // add a label
+                const t = filter.type === "key"
+                        ? `${filter.action} if ${filter.type} `
+                        : `${filter.action} if ${filter.type} `;
+                const filterLabel = document.createElement("label");
+                filterLabel.textContent = t;
+                filterLabel.classList.add("lbl_width");
+                filterDiv.appendChild(filterLabel);
+
+                const filterInput = document.createElement("input");
+                filterInput.type = "text";
+                filterInput.readOnly = true;
+                filterInput.value = filter.type === "key"
+                    ? `${filter.key}`
+                    : `${filter.value}`;
+                filterInput.classList.add("input-short");
+                filterDiv.appendChild(filterInput);
 
                 // Add a remove button
                 const removeButton = document.createElement("button");
