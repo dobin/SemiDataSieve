@@ -291,13 +291,14 @@
 
         // List of all filters
         let filters = [
-            { type: "key", action: "include", key: "level", value: "", active: true },
+            //{ type: "key", action: "include", key: "level", value: "", active: true },
             //{ type: "key", action: "exclude", key: "level", value: "INFO", active: true },
             //{ type: "value", action: "include", key: "", value: "memory", active: true }
         ]
         let visibility = [
-            { type: "key", action: "hide", key: "stuff", value: "" },
+            //{ type: "key", action: "hide", key: "stuff", value: "" },
             { type: "key", action: "header", key: "id", value: "" },
+            { type: "key", action: "header", key: "time", value: "" },
         ]
 
         // Popup menu data uargh
@@ -673,6 +674,13 @@
 
         // Logs
 
+        function hexify(value) {
+            if (typeof value === "number" && !isNaN(value)) {
+                return "0x" + value.toString(16);
+            }
+            return value;
+        }
+
         function renderLogs() {
             const container = document.getElementById("log-container");
             container.innerHTML = "";
@@ -712,7 +720,7 @@
                     
                     const valueSpan = document.createElement("span");
                     valueSpan.classList.add("log-value");
-                    valueSpan.textContent = value;
+                    valueSpan.textContent = hexify(value);
                     valueSpan.dataset.logIndex = logIndex;
                     valueSpan.dataset.key = key;
                     valueSpan.dataset.value = value;
