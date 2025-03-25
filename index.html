@@ -22,6 +22,7 @@
             height: 100vh;
             font-family: Arial, sans-serif;
         }
+        
         .log-container {
             flex: 1;
             overflow-y: auto;
@@ -42,6 +43,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 0.3em;
+            padding: 2px 3px;
         }
         .log-key, .log-value {
             position: relative;
@@ -54,10 +56,12 @@
             font-weight: bold;
         }
         .log-header {
-            background-color: #d5e6ff;;
+            background-color: #e9f1ff;
+            border-left: 3px solid #8ab6ff;
         }
         .log-important {
-            background-color: #f6f3c9;
+            background-color: #faf3c0;
+            border-left: 3px solid #e1c94a;
         }
         
         .menu {
@@ -746,8 +750,14 @@
                     }
 
                 });
-                logDiv.appendChild(entryDivHeader);
-                logDiv.appendChild(entryDivImportant);
+
+                // append if has children
+                if (entryDivHeader.children.length > 0) {
+                    logDiv.appendChild(entryDivHeader);
+                }
+                if (entryDivImportant.children.length > 0) {
+                    logDiv.appendChild(entryDivImportant);
+                }
                 logDiv.appendChild(entryDiv);
                 
                 container.appendChild(logDiv);
