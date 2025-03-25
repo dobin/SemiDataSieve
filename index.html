@@ -27,28 +27,32 @@
             overflow-y: auto;
             padding: 10px;
             background-color: #f4f4f4;
+            font-family: monospace;
+            font-size: 12px;
         }
         
         .log-line {
             padding: 5px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #aaa;
+        }
+        .log-kv {
+
         }
         .log-entry {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 0.3em;
         }
         .log-key, .log-value {
             position: relative;
             cursor: pointer;
         }
         .log-key {
-            font-weight: bold;
         }
         .log-value {
-            background-color: white;
-            padding: 3px 5px;
-            border-radius: 3px;
+            padding-right: 1em;
+            font-weight: bold;
+
         }
         
         .menu {
@@ -438,7 +442,7 @@
                 myfilters.push({ type: "key", action: "include", key: keyInclude, value: "", active: true });
             }
             if (valueInclude && valueIncludeChecked) {
-                myfilters.push({ type: "value", action: "include", key: "", value: valueInclud, active: true });
+                myfilters.push({ type: "value", action: "include", key: "", value: valueInclude, active: true });
             }
             if (keyExclude && keyExcludeChecked) {
                 myfilters.push({ type: "key", action: "exclude", key: keyExclude, value: "", active: true });
@@ -486,7 +490,7 @@
                     return true;
                 }
                 stage2_res = stage2_filters
-                    .every(filter => {
+                    .some(filter => {
                         if (filter.type === "key") {
                             if (filter.action === "include") {
                                 if (log.hasOwnProperty(filter.key)) {
@@ -645,7 +649,7 @@
                 logDiv.classList.add("log-line");
 
                 const entryDivHeader = document.createElement("div");
-                entryDivHeader.classList.add("log-entry-header");
+                entryDivHeader.classList.add("log-entry");
 
                 const entryDiv = document.createElement("div");
                 entryDiv.classList.add("log-entry");
@@ -660,7 +664,13 @@
                     keySpan.textContent = key + ": ";
                     keySpan.dataset.logIndex = logIndex;
                     keySpan.dataset.key = key;
-                    keySpan.onmouseenter = showPopupKey;
+                    keySpan.onmouseenter = () => {
+                        keySpan.style.border = "1px solid red";
+                    };
+                    keySpan.onmouseleave = () => {
+                        keySpan.style.border = "";
+                    };
+                    keySpan.onclick = showPopupKey;
                     
                     const valueSpan = document.createElement("span");
                     valueSpan.classList.add("log-value");
@@ -668,15 +678,25 @@
                     valueSpan.dataset.logIndex = logIndex;
                     valueSpan.dataset.key = key;
                     valueSpan.dataset.value = value;
-                    valueSpan.onmouseenter = showPopupValue;
+                    valueSpan.onmouseenter = () => {
+                        valueSpan.style.border = "1px solid red";
+                    };
+                    valueSpan.onmouseleave = () => {
+                        valueSpan.style.border = ""; // Reset border on mouse leave
+                    };
+                    valueSpan.onclick = showPopupValue;
+
+                    const log_kv = document.createElement("div");
+                    log_kv.classList.add("log-kv");
+                    log_kv.appendChild(keySpan);
+                    log_kv.appendChild(valueSpan);
                     
                     if (visibility.some(filter => filter.key === key && filter.action === "header")) {
-                        entryDivHeader.appendChild(keySpan);
-                        entryDivHeader.appendChild(valueSpan);
+                        entryDivHeader.appendChild(log_kv);
                     } else {
-                        entryDiv.appendChild(keySpan);
-                        entryDiv.appendChild(valueSpan);
+                        entryDiv.appendChild(log_kv);
                     }
+
                 });
                 logDiv.appendChild(entryDivHeader);
                 logDiv.appendChild(entryDiv);
@@ -750,7 +770,7 @@
             hideTimeout = setTimeout(() => {
                 realHidePopup();
                 popupShown = false;
-            }, 500);
+            }, 1000);
         }
 
         function realHidePopup() {
