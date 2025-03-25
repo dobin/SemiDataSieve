@@ -52,7 +52,12 @@
         .log-value {
             padding-right: 1em;
             font-weight: bold;
-
+        }
+        .log-header {
+            background-color: #d5e6ff;;
+        }
+        .log-important {
+            background-color: #f6f3c9;
         }
         
         .menu {
@@ -158,7 +163,8 @@
 
 <body>
     <div class="log-container" id="log-container"></div>
-    <div class="menu">
+
+    <div class="menu" id="menu">
         <!-- Menu: Head -->
         <div class="menu-head">
             <h2>SemiDataSieve</h2>
@@ -300,6 +306,18 @@
         let currentValue = null;
         let hideTimeout = null;
         let popupShown = false;
+
+
+        // Click on non-popups
+
+        document.getElementById("log-container").addEventListener("click", function(event) {
+            HidePopups();
+        });
+        function HidePopups() {
+            document.getElementById("settings").style.display = "none";
+            document.getElementById("storage").style.display = "none";
+            // Note: no key/value popup hide atm (time based)
+        }
 
 
         // Quick Filter
@@ -664,9 +682,15 @@
 
                 const entryDivHeader = document.createElement("div");
                 entryDivHeader.classList.add("log-entry");
+                entryDivHeader.classList.add("log-header");
 
+                const entryDivImportant = document.createElement("div");
+                entryDivImportant.classList.add("log-entry");
+                entryDivImportant.classList.add("log-important");
+                
                 const entryDiv = document.createElement("div");
                 entryDiv.classList.add("log-entry");
+
                 Object.entries(log).forEach(([key, value]) => {
                     // check if key is in visibility
                     if (visibility.some(filter => filter.key === key && filter.action === "hide")) {
@@ -707,12 +731,15 @@
                     
                     if (visibility.some(filter => filter.key === key && filter.action === "header")) {
                         entryDivHeader.appendChild(log_kv);
+                    } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
+                        entryDivImportant.appendChild(log_kv);
                     } else {
                         entryDiv.appendChild(log_kv);
                     }
 
                 });
                 logDiv.appendChild(entryDivHeader);
+                logDiv.appendChild(entryDivImportant);
                 logDiv.appendChild(entryDiv);
                 
                 container.appendChild(logDiv);
