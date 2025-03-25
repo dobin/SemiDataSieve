@@ -166,6 +166,7 @@
             key:value filtering<br>
             <br>
             <button class="nicebutton" onclick="settingsShow()">Options</button>
+            <button class="nicebutton" onclick="storageShow()">Storage</button>
         </div>
         
         <!-- Menu: Quick -->
@@ -253,6 +254,19 @@
         <div>
 
         </div>
+    </div>
+
+    <!-- Storage Popup -->
+    <div class="settings" id="storage">
+        <h2>Storage</h2>
+
+        <button onclick="StorageSaveCurrent()">Save</button>
+
+        <h3>Saved Entries</h3>
+        <select id="StorageEntriesList"></select>
+
+        <button onclick="StorageLoadEntry()">Load</button>
+        <button onclick="StorageDeleteEntry()">Delete</button>
     </div>
 
     <!-- JavaScript yay -->
@@ -781,6 +795,93 @@
         function cancelHidePopup() {
             clearTimeout(hideTimeout);
         }
+
+
+        // Storage
+        const STORAGE_KEY = "savedJsonEntries";
+
+        function storageShow() {
+            // toggle
+            if (document.getElementById("storage").style.display === "block") {
+                document.getElementById("storage").style.display = "none";
+            } else {
+                StorageUpdateDropdown();
+                document.getElementById("storage").style.display = "block";
+            }
+        }
+
+        function StorageGetSavedEntries() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        }
+
+        function StorageUpdateDropdown() {
+            const savedEntries = StorageGetSavedEntries();
+            const dropdown = document.getElementById("StorageEntriesList");
+            dropdown.innerHTML = "";
+
+            Object.keys(savedEntries).forEach(key => {
+                let option = document.createElement("option");
+                option.value = key;
+                option.textContent = key;
+                dropdown.appendChild(option);
+            });
+        }
+
+        function StorageSaveCurrent() {
+            let data = StorageGetUiData();
+            let key = prompt("Enter a name for this entry:");
+            if (!key) return;
+
+            let savedEntries = StorageGetSavedEntries();
+            savedEntries[key] = data;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedEntries));
+
+            StorageUpdateDropdown();
+        }
+
+        function StorageLoadEntry() {
+            let selectedKey = document.getElementById("StorageEntriesList").value;
+            if (!selectedKey) return;
+            let savedEntries = StorageGetSavedEntries();
+
+            let data = savedEntries[selectedKey]
+            StorageSetUiData(data);
+        }
+
+        function StorageDeleteEntry() {
+            let selectedKey = document.getElementById("StorageEntriesList").value;
+            if (!selectedKey) return;
+
+            let savedEntries = StorageGetSavedEntries();
+            delete savedEntries[selectedKey];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedEntries));
+
+            StorageUpdateDropdown();
+        }
+
+        function StorageGetUiData() {
+            let data = {
+                "filters": filters,
+                "visibility": visibility,
+                "quick_filter_key_inc":   document.getElementById("quick-filter-include-key").value,
+                "quick_filter_value_inc": document.getElementById("quick-filter-include-value").value,
+                "quick_filter_key_ex":    document.getElementById("quick-filter-exclude-key").value,
+                "quick_filter_value_ex":  document.getElementById("quick-filter-exclude-value").value,
+            }
+            return data;
+        }
+
+        function StorageSetUiData(data) {
+            filters = data["filters"];
+            visibility = data["visibility"];
+            document.getElementById("quick-filter-include-key").value =   data["quick_filter_key_inc"];
+            document.getElementById("quick-filter-include-value").value = data["quick_filter_value_inc"];
+            document.getElementById("quick-filter-exclude-key").value =   data["quick_filter_key_ex"];
+            document.getElementById("quick-filter-exclude-value").value = data["quick_filter_value_ex"];
+        
+            refresh();
+        }
+
 
         // Main
 
