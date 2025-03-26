@@ -10,9 +10,9 @@ Available at: [semidatasieve.r00ted.ch](https://semidatasieve.r00ted.ch)
 
 ## Screenshot
 
-from github:
-
 ![Screenshot](https://raw.githubusercontent.com/dobin/SemiDataSieve/master/doc/screenshot.png)
+
+![Screenshot](https://raw.githubusercontent.com/dobin/SemiDataSieve/master/doc/screenshot2.png)
 
 
 ## Filter 
