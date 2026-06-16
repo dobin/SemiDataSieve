@@ -26,42 +26,109 @@
         .log-container {
             flex: 1;
             overflow-y: auto;
-            padding: 10px;
-            background-color: #f4f4f4;
-            font-family: monospace;
-            font-size: 12px;
+            padding: 8px;
+            background-color: #fafbfc;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
         }
         
         .log-line {
-            padding: 5px;
-            border-bottom: 1px solid #aaa;
+            background-color: #ffffff;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
         }
+        
+        .log-line:hover {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-color: #c6d0dd;
+        }
+        
         .log-kv {
-
+            display: inline-block;
+            margin-right: 12px;
+            margin-bottom: 2px;
         }
+        
         .log-entry {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.3em;
-            padding: 2px 3px;
+            gap: 0;
+            padding: 6px 10px;
+            border-bottom: 1px solid #f0f3f6;
         }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
         .log-key, .log-value {
             position: relative;
             cursor: pointer;
+            border-radius: 2px;
+            transition: background-color 0.15s ease;
         }
+        
         .log-key {
+            color: #0969da;
+            font-weight: 500;
+            padding: 1px 2px;
         }
+        
+        .log-key:hover {
+            background-color: #fff8c5;
+            box-shadow: 0 0 0 1px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-key.hover-active {
+            background-color: #ffeaa7;
+            box-shadow: 0 0 0 2px #0969da;
+            border-radius: 3px;
+        }
+        
         .log-value {
-            padding-right: 1em;
-            font-weight: bold;
+            color: #1f2328;
+            padding: 1px 2px;
+            margin-right: 12px;
+            word-break: break-word;
         }
+        
+        .log-value:hover {
+            background-color: #fff8c5;
+            box-shadow: 0 0 0 1px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-value.hover-active {
+            background-color: #ffeaa7;
+            box-shadow: 0 0 0 2px #0969da;
+            border-radius: 3px;
+        }
+        
         .log-header {
-            background-color: #e9f1ff;
-            border-left: 3px solid #8ab6ff;
+            background-color: #f6f8fa;
+            border-left: 4px solid #0969da;
+            border-bottom: 1px solid #d8dee4;
         }
+        
+        .log-header .log-key {
+            color: #0969da;
+            font-weight: 600;
+        }
+        
         .log-important {
-            background-color: #faf3c0;
-            border-left: 3px solid #e1c94a;
+            background-color: #fff8e1;
+            border-left: 4px solid #fb8500;
+            border-bottom: 1px solid #e9d5a1;
+        }
+        
+        .log-important .log-key {
+            color: #b8490a;
+            font-weight: 600;
         }
         
         .menu {
@@ -235,7 +302,7 @@
     </div>
 
     <!-- Popup Windows (one for key, value) -->
-    <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
+    <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="scheduleHidePopup()">
         Key:
         <button id="action-button-key-include">Include</button>
         <button id="action-button-key-exclude">Exclude</button>
@@ -243,7 +310,7 @@
         <button id="action-button-key-header">Header</button>
         <button id="action-button-key-important">Important</button>
     </div>
-    <div class="popup" id="popup_value" onmouseenter="cancelHidePopup()" onmouseleave="hidePopup()">
+    <div class="popup" id="popup_value" onmouseenter="cancelHidePopup()" onmouseleave="scheduleHidePopup()">
         Value:
         <button id="action-button-value-include">Include</button>
         <button id="action-button-value-exclude">Exclude</button>
@@ -305,6 +372,7 @@
         // REST API endpoint configuration (recommended for large datasets)
         // For Flask integration, set this to your API endpoint, e.g., '/api/logs' or '/api/logs/rededr'
         // const FLASK_API_ENDPOINT = "{{ api_endpoint }}";
+        // const FLASK_API_ENDPOINT_VAR = ""
         const FLASK_API_ENDPOINT = typeof FLASK_API_ENDPOINT_VAR !== 'undefined' ? FLASK_API_ENDPOINT_VAR : null;
         
         // Initialize data source
@@ -371,12 +439,18 @@
         ];
         const colorRules = typeof FLASK_COLOR_RULES !== 'undefined' ? FLASK_COLOR_RULES : DEMO_COLOR_RULES;
 
-        // Popup menu data uargh
+        // Popup menu data
         let currentLogEntry = null;
         let currentKey = null;
         let currentValue = null;
+        let showTimeout = null;
         let hideTimeout = null;
         let popupShown = false;
+        let hoveredElement = null;
+        
+        // Timing constants for popup behavior
+        const POPUP_SHOW_DELAY = 500; // milliseconds to wait before showing popup
+        const POPUP_HIDE_DELAY = 300; // milliseconds to wait before hiding popup
 
 
         // Click on non-popups
@@ -387,7 +461,7 @@
         function HidePopups() {
             document.getElementById("settings").style.display = "none";
             document.getElementById("storage").style.display = "none";
-            // Note: no key/value popup hide atm (time based)
+            hidePopupImmediately();
         }
 
 
@@ -779,67 +853,164 @@
                 const entryDiv = document.createElement("div");
                 entryDiv.classList.add("log-entry");
 
+                const arrayEntryDiv = document.createElement("div");
+                arrayEntryDiv.classList.add("log-entry");
+
                 Object.entries(log).forEach(([key, value]) => {
                     // check if key is in visibility
                     if (visibility.some(filter => filter.key === key && filter.action === "hide")) {
                         return;
                     }
 
-                    const keySpan = document.createElement("span");
-                    keySpan.classList.add("log-key");
-                    keySpan.textContent = key + ": ";
-                    keySpan.dataset.logIndex = logIndex;
-                    keySpan.dataset.key = key;
-                    keySpan.onmouseenter = () => {
-                        keySpan.style.border = "1px solid red";
-                    };
-                    keySpan.onmouseleave = () => {
-                        keySpan.style.border = "";
-                    };
-                    keySpan.onclick = showPopupKey;
-                    
-                    // Apply color rules to key
-                    const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
-                    if (keyRule) {
-                        if (keyRule.color) keySpan.style.color = keyRule.color;
-                        if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
-                    }
+                    // Check if value is an array
+                    if (Array.isArray(value)) {
+                        const arrayContainer = document.createElement("div");
+                        arrayContainer.classList.add("log-kv");
 
-                    const valueSpan = document.createElement("span");
-                    valueSpan.classList.add("log-value");
-                    valueSpan.textContent = hexify(value);
-                    valueSpan.dataset.logIndex = logIndex;
-                    valueSpan.dataset.key = key;
-                    valueSpan.dataset.value = value;
-                    valueSpan.onmouseenter = () => {
-                        valueSpan.style.border = "1px solid red";
-                    };
-                    valueSpan.onmouseleave = () => {
-                        valueSpan.style.border = ""; // Reset border on mouse leave
-                    };
-                    valueSpan.onclick = showPopupValue;
+                        const keySpan = document.createElement("span");
+                        keySpan.classList.add("log-key");
+                        keySpan.textContent = key + ": ";
+                        keySpan.dataset.logIndex = logIndex;
+                        keySpan.dataset.key = key;
+                        keySpan.onmouseenter = (event) => {
+                            keySpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "key");
+                        };
+                        keySpan.onmouseleave = () => {
+                            keySpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
 
-                    // Apply color rules to value
-                    const valStr = String(value);
-                    const valueRule = colorRules.find(r => r.type === "value" && valStr === r.match);
-                    if (valueRule) {
-                        if (valueRule.color) valueSpan.style.color = valueRule.color;
-                        if (valueRule.backgroundColor) valueSpan.style.backgroundColor = valueRule.backgroundColor;
-                    }
+                        // Apply color rules to key
+                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+                        if (keyRule) {
+                            if (keyRule.color) keySpan.style.color = keyRule.color;
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                        }
 
-                    const log_kv = document.createElement("div");
-                    log_kv.classList.add("log-kv");
-                    log_kv.appendChild(keySpan);
-                    log_kv.appendChild(valueSpan);
-                    
-                    if (visibility.some(filter => filter.key === key && filter.action === "header")) {
-                        entryDivHeader.appendChild(log_kv);
-                    } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
-                        entryDivImportant.appendChild(log_kv);
+                        const toggleButton = document.createElement("button");
+                        toggleButton.textContent = `Show (${value.length})`;
+                        toggleButton.style.marginLeft = "5px";
+                        toggleButton.style.fontSize = "12px";
+                        toggleButton.style.padding = "2px 5px";
+                        
+                        const arrayContent = document.createElement("div");
+                        arrayContent.style.display = "none";
+                        arrayContent.style.marginLeft = "20px";
+                        arrayContent.style.marginTop = "5px";
+                        arrayContent.style.border = "1px solid #ccc";
+                        arrayContent.style.padding = "5px";
+                        arrayContent.style.backgroundColor = "#f9f9f9";
+
+                        value.forEach((item, arrayIndex) => {
+                            const itemDiv = document.createElement("div");
+                            itemDiv.style.marginBottom = "3px";
+                            itemDiv.style.padding = "2px";
+                            itemDiv.style.borderBottom = "1px solid #eee";
+
+                            if (typeof item === 'object' && item !== null) {
+                                // If array item is an object, display key-value pairs horizontally
+                                const itemEntries = Object.entries(item);
+                                itemEntries.forEach(([itemKey, itemValue], entryIndex) => {
+                                    const itemKeySpan = document.createElement("span");
+                                    itemKeySpan.textContent = itemKey + ": ";
+                                    itemKeySpan.style.fontWeight = "bold";
+                                    itemKeySpan.style.marginRight = "5px";
+
+                                    const itemValueSpan = document.createElement("span");
+                                    itemValueSpan.textContent = hexify(itemValue);
+                                    itemValueSpan.style.marginRight = "15px";
+
+                                    itemDiv.appendChild(itemKeySpan);
+                                    itemDiv.appendChild(itemValueSpan);
+                                });
+                            } else {
+                                // If array item is a primitive, just display it
+                                itemDiv.textContent = `[${arrayIndex}]: ${hexify(item)}`;
+                            }
+                            arrayContent.appendChild(itemDiv);
+                        });
+
+                        toggleButton.onclick = () => {
+                            if (arrayContent.style.display === "none") {
+                                arrayContent.style.display = "block";
+                                toggleButton.textContent = `Hide (${value.length})`;
+                            } else {
+                                arrayContent.style.display = "none";
+                                toggleButton.textContent = `Show (${value.length})`;
+                            }
+                        };
+
+                        arrayContainer.appendChild(keySpan);
+                        arrayContainer.appendChild(toggleButton);
+                        arrayContainer.appendChild(arrayContent);
+
+                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
+                            entryDivHeader.appendChild(arrayContainer);
+                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
+                            entryDivImportant.appendChild(arrayContainer);
+                        } else {
+                            arrayEntryDiv.appendChild(arrayContainer);
+                        }
                     } else {
-                        entryDiv.appendChild(log_kv);
-                    }
+                        // Handle non-array values as before
+                        const keySpan = document.createElement("span");
+                        keySpan.classList.add("log-key");
+                        keySpan.textContent = key + ": ";
+                        keySpan.dataset.logIndex = logIndex;
+                        keySpan.dataset.key = key;
+                        keySpan.onmouseenter = (event) => {
+                            keySpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "key");
+                        };
+                        keySpan.onmouseleave = () => {
+                            keySpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
+                        
+                        // Apply color rules to key
+                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+                        if (keyRule) {
+                            if (keyRule.color) keySpan.style.color = keyRule.color;
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                        }
 
+                        const valueSpan = document.createElement("span");
+                        valueSpan.classList.add("log-value");
+                        valueSpan.textContent = hexify(value);
+                        valueSpan.dataset.logIndex = logIndex;
+                        valueSpan.dataset.key = key;
+                        valueSpan.dataset.value = value;
+                        valueSpan.onmouseenter = (event) => {
+                            valueSpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "value");
+                        };
+                        valueSpan.onmouseleave = () => {
+                            valueSpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
+
+                        // Apply color rules to value
+                        const valStr = String(value);
+                        const valueRule = colorRules.find(r => r.type === "value" && valStr === r.match);
+                        if (valueRule) {
+                            if (valueRule.color) valueSpan.style.color = valueRule.color;
+                            if (valueRule.backgroundColor) valueSpan.style.backgroundColor = valueRule.backgroundColor;
+                        }
+
+                        const log_kv = document.createElement("div");
+                        log_kv.classList.add("log-kv");
+                        log_kv.appendChild(keySpan);
+                        log_kv.appendChild(valueSpan);
+                        
+                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
+                            entryDivHeader.appendChild(log_kv);
+                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
+                            entryDivImportant.appendChild(log_kv);
+                        } else {
+                            entryDiv.appendChild(log_kv);
+                        }
+                    }
                 });
 
                 // append if has children
@@ -850,6 +1021,9 @@
                     logDiv.appendChild(entryDivImportant);
                 }
                 logDiv.appendChild(entryDiv);
+                if (arrayEntryDiv.children.length > 0) {
+                    logDiv.appendChild(arrayEntryDiv);
+                }
                 
                 container.appendChild(logDiv);
             });
@@ -860,76 +1034,91 @@
         function popupInit() {
             document.getElementById("action-button-key-include").addEventListener("click", () => {
                 addFilter("key", "include", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
             document.getElementById("action-button-key-exclude").addEventListener("click", () => {
                 addFilter("key", "exclude", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
             document.getElementById("action-button-value-include").addEventListener("click", () => {
                 addFilter("value", "include", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
             document.getElementById("action-button-value-exclude").addEventListener("click", () => {
                 addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
 
             document.getElementById("action-button-key-hide").addEventListener("click", () => {
                 addVisibility("key", "hide", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
             document.getElementById("action-button-key-header").addEventListener("click", () => {
                 addVisibility("key", "header", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
             document.getElementById("action-button-key-important").addEventListener("click", () => {
                 addVisibility("key", "important", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
             });
         }
 
-        function showPopupKey(event) {
-            showPopup(event, "key");
-        }
-        function showPopupValue(event) {
-            showPopup(event, "value");
+        function scheduleShowPopup(event, type) {
+            // Clear any existing timeouts
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            
+            // Store the event data
+            currentLogEntry = event.target.dataset.logIndex;
+            currentKey = event.target.dataset.key;
+            currentValue = event.target.dataset.value || "";
+            hoveredElement = event.target;
+            
+            // Schedule the popup to show after a delay
+            showTimeout = setTimeout(() => {
+                showPopup(event, type);
+            }, POPUP_SHOW_DELAY);
         }
 
         function showPopup(event, type) {
-            if (popupShown) {
-                realHidePopup();
-                cancelHidePopup();
-                popupShown = false;
-            }
+            // Hide any existing popup first
+            hidePopupImmediately();
             
-            clearTimeout(hideTimeout);
-            popupName = "popup_" + type
+            const popupName = "popup_" + type;
             const popup = document.getElementById(popupName);
             popup.style.left = `${event.pageX + 5}px`;
             popup.style.top = `${event.pageY + 5}px`;
             popup.style.display = "block";
             
-            currentLogEntry = event.target.dataset.logIndex;
-            currentKey = event.target.dataset.key;
-            currentValue = event.target.dataset.value || "";
-
             popupShown = true;
-
-            hideTimeout = setTimeout(() => {
-                document.getElementById("popup_key").style.display = "none";
-                document.getElementById("popup_value").style.display = "none";
-                popupShown = false;
-            }, 1500);
         }
 
-        function hidePopup() {
-            hideTimeout = setTimeout(() => {
-                realHidePopup();
-                popupShown = false;
-            }, 1000);
+        function scheduleHidePopup() {
+            // Clear any pending show timeout
+            clearTimeout(showTimeout);
+            
+            // Only schedule hide if we're not already hiding
+            if (popupShown && !hideTimeout) {
+                hideTimeout = setTimeout(() => {
+                    hidePopupImmediately();
+                }, POPUP_HIDE_DELAY);
+            }
         }
 
-        function realHidePopup() {
+        function hidePopupImmediately() {
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            showTimeout = null;
+            hideTimeout = null;
+            
             document.getElementById("popup_key").style.display = "none";
             document.getElementById("popup_value").style.display = "none";
+            popupShown = false;
         }
 
         function cancelHidePopup() {
             clearTimeout(hideTimeout);
+            hideTimeout = null;
         }
 
 
@@ -1031,7 +1220,7 @@
         }
 
         popupInit();
-        refresh()
+        refresh();
     </script>
 </body>
 </html>
